@@ -51,10 +51,10 @@ jobs:
           set -euxo pipefail
           TAG="${{ steps.meta.outputs.tag }}"
           ASSET="${{ steps.meta.outputs.asset }}"
-          if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
-            git tag "$TAG"
-            git push origin "$TAG"
-          fi
+          # Let `gh release create` create the tag via the Releases API rather
+          # than `git push`: pushing any ref whose tree includes
+          # .github/workflows/ is rejected for the default Actions token,
+          # even for plain tags unrelated to workflow content.
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ASSET" --clobber
           else
