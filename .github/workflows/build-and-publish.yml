@@ -1,10 +1,10 @@
-name: Build and Publish sharp-libvips (noavx) package
+name: Build and Publish sharp (noavx) packages
 
 'on':
   workflow_dispatch:
     inputs:
-      sharp_libvips_version:
-        description: '@img/sharp-libvips-linux-x64 npm version to base the package on (leave empty for latest)'
+      sharp_version:
+        description: 'sharp npm version to build against (leave empty for latest)'
         required: false
         type: string
       libvips_noavx_tag:
@@ -14,7 +14,7 @@ name: Build and Publish sharp-libvips (noavx) package
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
@@ -26,18 +26,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Build package
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
+      - name: Build packages
         run: |
           set -euxo pipefail
           chmod +x ./build.sh
-          ./build.sh "${{ inputs.sharp_libvips_version }}" "${{ inputs.libvips_noavx_tag }}"
+          ./build.sh "${{ inputs.sharp_version }}" "${{ inputs.libvips_noavx_tag }}"
 
       - name: Determine release tag
         id: meta
         run: |
           set -euxo pipefail
           ASSET="$(ls build/*.tar.gz | head -n1)"
-          VERSION="$(basename "$ASSET" .tar.gz | sed -E 's/^sharp-libvips-linux-x64-noavx-//')"
+          VERSION="$(basename "$ASSET" .tar.gz | sed -E 's/^sharp-noavx-linux-x64-//')"
           echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
           echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -56,6 +59,6 @@ jobs:
             gh release upload "$TAG" "$ASSET" --clobber
           else
             gh release create "$TAG" "$ASSET" \
-              --title "sharp-libvips-linux-x64 $TAG (x86_64-v1, no AVX/AVX2)" \
-              --notes "Drop-in replacement for node_modules/@img/sharp-libvips-linux-x64, rebuilt for the x86-64-v1 CPU baseline (no AVX/AVX2)."
+              --title "sharp $TAG (x86_64-v1, no AVX/AVX2/SSE4.2)" \
+              --notes "Drop-in replacement for node_modules/@img/sharp-linux-x64 and node_modules/@img/sharp-libvips-linux-x64, rebuilt for the x86-64-v1 CPU baseline."
           fi
